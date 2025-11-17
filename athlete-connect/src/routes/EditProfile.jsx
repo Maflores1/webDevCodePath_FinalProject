@@ -94,15 +94,15 @@ function EditProfile() {
   const SPORTS = [
     'Tennis', 'Soccer', 'Basketball', 'Volleyball', 'Swimming',
     'Track & Field', 'Golf', 'Baseball', 'Softball', 'Wrestling',
-    'Cross Country', 'Lacrosse', 'Hockey', 'Rugby', 'Other'
+    'Cross Country', 'Lacrosse', 'Other'
   ];
 
   const COUNTRIES = [
-    'Argentina', 'Australia', 'Brazil', 'Canada', 'Chile', 'China',
+    'Argentina', 'Australia', 'Brazil', 'Canada', 'Chile',
     'Colombia', 'Ecuador', 'France', 'Germany', 'India', 'Italy',
-    'Japan', 'Kenya', 'Mexico', 'Netherlands', 'New Zealand', 
-    'Peru', 'South Korea', 'Spain', 'Sweden', 'Switzerland',
-    'United Kingdom', 'Uruguay', 'Venezuela', 'Other'
+    'Japan', 'Mexico', 'Netherlands', 'New Zealand', 
+    'Peru', 'Spain', 'Switzerland',
+    'United Kingdom', 'United States', 'Uruguay', 'Venezuela', 'Other'
   ];
 
   return (
