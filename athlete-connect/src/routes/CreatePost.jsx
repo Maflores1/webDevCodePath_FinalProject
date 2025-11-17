@@ -1,19 +1,25 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
+import { useAuth } from '../contexts/AuthContext'
+import { uploadMedia } from '../utils/mediaUpload'
+import { showToast } from '../Components/Toast';
 
 function CreatePost() {
   const navigate = useNavigate();
+  const { user, profile } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   
   const [formData, setFormData] = useState({
     title: '',
     content: '',
-    image_url: '',
     category: 'General',
-    author_name: '',
     is_mentor_post: false
   });
+
+  const [mediaData, setMediaData] = useState(null);
+  const [preview, setPreview] = useState(null);
 
   const CATEGORIES = [
     'General',
@@ -35,43 +41,74 @@ function CreatePost() {
     }));
   };
 
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Show preview immediately
+    const previewUrl = URL.createObjectURL(file);
+    setPreview(previewUrl);
+
+    setUploading(true);
+
+    try {
+      const result = await uploadMedia(file);
+      setMediaData(result);
+      showToast('Media uploaded successfully!', 'success');
+    } catch (error) {
+      console.error('Upload error:', error);
+      showToast(error.message || 'Error uploading media', 'error');
+      setPreview(null);
+      setMediaData(null);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // Validation
     if (!formData.title.trim()) {
-      alert('Please add a title for your post!');
-      return;
-    }
-
-    if (!formData.author_name.trim()) {
-      alert('Please enter your name or use "Anonymous"');
+      showToast('Please add a title for your post!', 'info');
       return;
     }
 
     setLoading(true);
 
     try {
+      const postData = {
+        title: formData.title.trim(),
+        content: formData.content.trim() || null,
+        category: formData.category,
+        author_name: profile?.full_name || 'Anonymous',
+        user_id: user.id,
+        is_mentor_post: formData.is_mentor_post,
+        upvotes: 0
+      };
+
+      // Add media data if uploaded
+      if (mediaData) {
+        if (mediaData.type === 'video') {
+          postData.video_url = mediaData.url;
+          postData.media_type = 'video';
+        } else {
+          postData.image_url = mediaData.url;
+          postData.media_type = 'image';
+        }
+      }
+
       const { data, error } = await supabase
         .from('posts')
-        .insert([{
-          title: formData.title.trim(),
-          content: formData.content.trim() || null,
-          image_url: formData.image_url.trim() || null,
-          category: formData.category,
-          author_name: formData.author_name.trim(),
-          is_mentor_post: formData.is_mentor_post,
-          upvotes: 0
-        }])
+        .insert([postData])
         .select();
 
       if (error) throw error;
 
-      alert('Post created successfully! 🎉');
+      showToast('Post created successfully!', 'success');
       navigate('/');
     } catch (error) {
       console.error('Error creating post:', error);
-      alert('Error creating post. Please try again.');
+      showToast('Error creating post. Please try again.', 'error');
     } finally {
       setLoading(false);
     }
@@ -87,20 +124,6 @@ function CreatePost() {
         </p>
 
         <form onSubmit={handleSubmit} className="create-form">
-          {/* Author Name */}
-          <div className="form-group">
-            <label>Your Name *</label>
-            <input
-              type="text"
-              name="author_name"
-              value={formData.author_name}
-              onChange={handleChange}
-              placeholder="Enter your name or 'Anonymous'"
-              required
-            />
-            <small>This will be visible on your post</small>
-          </div>
-
           {/* Category */}
           <div className="form-group">
             <label>Category *</label>
@@ -145,23 +168,42 @@ function CreatePost() {
             <small>Add details to help the community understand your experience</small>
           </div>
 
-          {/* Image URL */}
+          {/* Media Upload */}
           <div className="form-group">
-            <label>Image URL (Optional)</label>
-            <input
-              type="url"
-              name="image_url"
-              value={formData.image_url}
-              onChange={handleChange}
-              placeholder="https://example.com/image.jpg"
-            />
-            <small>Add an image to make your post stand out</small>
-            
-            {formData.image_url && (
-              <div className="image-preview">
-                <img src={formData.image_url} alt="Preview" onError={(e) => e.target.style.display = 'none'} />
-              </div>
-            )}
+            <label>Add Image or Video (Optional)</label>
+            <div className="media-upload">
+              <input
+                type="file"
+                accept="image/*,video/*"
+                onChange={handleFileChange}
+                disabled={uploading}
+                id="media-upload-input"
+                style={{ display: 'none' }}
+              />
+              
+              <label htmlFor="media-upload-input" className="upload-button">
+                {uploading ? '⏳ Uploading...' : '📎 Upload Image/Video'}
+              </label>
+
+              {preview && (
+                <div className="media-preview" style={{ marginTop: '15px' }}>
+                  {mediaData?.type === 'video' ? (
+                    <video 
+                      src={preview} 
+                      controls 
+                      style={{ maxWidth: '100%', borderRadius: '10px', border: '2px solid var(--primary-gold)' }}
+                    />
+                  ) : (
+                    <img 
+                      src={preview} 
+                      alt="Preview" 
+                      style={{ maxWidth: '100%', borderRadius: '10px', border: '2px solid var(--primary-gold)' }}
+                    />
+                  )}
+                </div>
+              )}
+            </div>
+            <small>Supported: Images (JPG, PNG, GIF, WebP - max 5MB) or Videos (MP4, WebM - max 50MB)</small>
           </div>
 
           {/* Mentor Checkbox */}
@@ -190,13 +232,32 @@ function CreatePost() {
             <button 
               type="submit" 
               className="btn-primary"
-              disabled={loading}
+              disabled={loading || uploading}
             >
               {loading ? 'Posting...' : '🚀 Post to Community'}
             </button>
           </div>
         </form>
       </div>
+
+      <style>{`
+        .upload-button {
+          display: inline-block;
+          padding: 12px 24px;
+          background: rgba(218, 165, 32, 0.1);
+          border: 2px dashed var(--primary-gold);
+          border-radius: 10px;
+          color: var(--primary-gold);
+          cursor: pointer;
+          transition: all 0.3s ease;
+          font-weight: 600;
+        }
+
+        .upload-button:hover {
+          background: rgba(218, 165, 32, 0.2);
+          transform: scale(1.02);
+        }
+      `}</style>
     </div>
   );
 }

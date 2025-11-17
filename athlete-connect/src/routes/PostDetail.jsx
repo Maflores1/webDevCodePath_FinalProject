@@ -1,13 +1,22 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
+import { useAuth } from '../contexts/AuthContext'
 import CommentSection from '../Components/CommentSection'
+import { showToast } from '../Components/Toast';
 
 function PostDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user, profile } = useAuth();
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Check if current user is the post author OR founder
+  const isAuthor = user && post && post.user_id === user.id;
+  const FOUNDER_EMAIL = 'floresmateo226@gmail.com';
+  const isFounder = profile && profile.email === FOUNDER_EMAIL;
+  const canEditDelete = isAuthor || isFounder;
 
   useEffect(() => {
     loadPost();
@@ -25,7 +34,7 @@ function PostDetail() {
       setPost(data);
     } catch (error) {
       console.error('Error loading post:', error);
-      alert('Post not found');
+      showToast('Post not found', 'error');
       navigate('/');
     } finally {
       setLoading(false);
@@ -33,6 +42,12 @@ function PostDetail() {
   };
 
   const handleUpvote = async () => {
+    if (!user) {
+      showToast('Please log in to upvote posts! 🔒', 'error');
+      navigate('/login');
+      return;
+    }
+
     try {
       const { error } = await supabase
         .from('posts')
@@ -47,7 +62,16 @@ function PostDetail() {
   };
 
   const handleDelete = async () => {
-    if (!window.confirm('Are you sure you want to delete this post? This cannot be undone.')) {
+    if (!canEditDelete) {
+      showToast('You can only delete your own posts!', 'error');
+      return;
+    }
+
+    const confirmMessage = isFounder && !isAuthor 
+      ? '🛡️ FOUNDER: Are you sure you want to remove this post?' 
+      : 'Are you sure you want to delete this post? This cannot be undone.';
+
+    if (!window.confirm(confirmMessage)) {
       return;
     }
 
@@ -59,11 +83,30 @@ function PostDetail() {
 
       if (error) throw error;
 
-      alert('Post deleted successfully');
+      showToast('Post deleted successfully', 'success');
       navigate('/');
     } catch (error) {
       console.error('Error deleting post:', error);
-      alert('Error deleting post. Please try again.');
+      showToast('Error deleting post. Please try again.', 'error');
+    }
+  };
+
+  const handlePinPost = async () => {
+    if (!isFounder) return;
+
+    try {
+      const { error } = await supabase
+        .from('posts')
+        .update({ is_pinned: !post.is_pinned })
+        .eq('id', post.id);
+
+      if (error) throw error;
+      
+      setPost(prev => ({ ...prev, is_pinned: !prev.is_pinned }));
+      showToast(post.is_pinned ? 'Post unpinned' : 'Post pinned to top!', 'success');
+    } catch (error) {
+      console.error('Error pinning post:', error);
+      showToast('Error pinning post', 'error');
     }
   };
 
@@ -105,7 +148,11 @@ function PostDetail() {
         <div className="post-detail-header">
           <div className="post-detail-meta">
             <span className="category-badge">{post.category}</span>
-            {post.is_mentor_post && <span className="mentor-badge">✨ Mentor</span>}
+            {post.is_mentor_post && <span className="mentor-badge">Mentor</span>}
+            {/* FOUNDER BADGE - only shows if author is you */}
+            {post.author_name === 'Mateo Flores' && (
+            <span className="founder-badge">👑 Founder</span>
+          )}
             <span className="post-time">{timeAgo(post.created_at)}</span>
           </div>
 
@@ -117,9 +164,16 @@ function PostDetail() {
         </div>
 
         {/* Post Image */}
-        {post.image_url && (
+        {post.image_url && post.media_type !== 'video' && (
           <div className="post-image-container">
             <img src={post.image_url} alt={post.title} className="post-image" />
+          </div>
+        )}
+
+        {/* Post Video */}
+        {post.video_url && post.media_type === 'video' && (
+          <div className="post-image-container">
+            <video src={post.video_url} controls className="post-image" />
           </div>
         )}
 
@@ -136,19 +190,54 @@ function PostDetail() {
             👍 Upvote ({post.upvotes})
           </button>
 
-          <div className="post-action-buttons">
-            <Link to={`/edit/${post.id}`} className="btn-edit">
-              ✏️ Edit
-            </Link>
-            <button onClick={handleDelete} className="btn-delete">
-              🗑️ Delete
-            </button>
-          </div>
+          {canEditDelete && (
+            <div className="post-action-buttons">
+              {isFounder && (
+                <button onClick={handlePinPost} className="btn-pin">
+                  {post.is_pinned ? '📌 Unpin' : '📌 Pin'}
+                </button>
+              )}
+              {isAuthor && (
+                <Link to={`/edit/${post.id}`} className="btn-edit">
+                  ✏️ Edit
+                </Link>
+              )}
+              <button onClick={handleDelete} className="btn-delete">
+                {isFounder && !isAuthor ? '🛡️ Remove' : '🗑️ Delete'}
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Comments Section */}
-        <CommentSection postId={post.id} />
+        {/* Comments Section - Pass user prop */}
+        <CommentSection postId={post.id} user={user} />
       </div>
+
+      <style>{`
+        .founder-badge {
+          color: white;
+          padding: 6px 12px;
+          border-radius: 20px;
+          font-size: 0.85em;
+          font-weight: 600;
+          box-shadow: 0 2px 10px rgba(255, 215, 0, 0.4);
+        }
+
+        .btn-pin {
+          padding: 10px 20px;
+          background: rgba(255, 107, 107, 0.1);
+          border: 1px solid #ff6b6b;
+          color: #ff6b6b;
+          border-radius: 8px;
+          cursor: pointer;
+          font-weight: 600;
+          transition: all 0.3s ease;
+        }
+
+        .btn-pin:hover {
+          background: rgba(255, 107, 107, 0.2);
+        }
+      `}</style>
     </div>
   );
 }
