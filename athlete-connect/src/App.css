@@ -225,17 +225,6 @@ body {
   padding: 20px 0;
 }
 
-.post-card {
-  background: linear-gradient(135deg, var(--card-bg) 0%, #2d2d2d 100%);
-  border: 1px solid var(--border-gold);
-  border-radius: 15px;
-  padding: 25px;
-  text-decoration: none;
-  color: white;
-  transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
-}
 
 .post-card::before {
   content: '';

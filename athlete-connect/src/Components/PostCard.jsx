@@ -153,8 +153,8 @@ function PostCard({ post, onUpdate }) {
 
         .pinned-badge {
           position: absolute;
-          top: 25px;
-          right: 110px;
+          top: 20px;
+          right: 100px;
           background: linear-gradient(45deg, #ff6b6b, #ee5a6f);
           color: white;
           padding: 6px 12px;
@@ -164,12 +164,6 @@ function PostCard({ post, onUpdate }) {
           box-shadow: 0 2px 10px rgba(255, 107, 107, 0.3);
         }
 
-        .post-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-bottom: 15px;
-        }
         .category-badge {
           background: rgba(218, 165, 32, 0.2);
           color: var(--primary-gold);
