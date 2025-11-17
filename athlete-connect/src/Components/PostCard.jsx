@@ -212,9 +212,9 @@ function PostCard({ post, onUpdate }) {
 
         .pinned-badge {
           position: absolute;
-          top: 20px;
-          right: 100px;
-          background: linear-gradient(45deg, #ff6b6b, #ee5a6f);
+          top: -2px;
+          right: 0px;
+          background: black;
           color: white;
           padding: 6px 12px;
           border-radius: 20px;
