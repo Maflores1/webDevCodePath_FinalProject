@@ -5,12 +5,15 @@ import { supabase } from '../supabaseClient';
 function PostCard({ post, onUpdate }) {
   const [authorProfile, setAuthorProfile] = useState(null);
   const [commentCount, setCommentCount] = useState(0);
+  const [isLiked, setIsLiked] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
     if (post.user_id) {
       loadAuthorProfile();
     }
     loadCommentCount();
+    fetchUserAndLikeStatus();
   }, [post.id, post.user_id]);
 
   const loadAuthorProfile = async () => {
@@ -42,6 +45,26 @@ function PostCard({ post, onUpdate }) {
     }
   };
 
+  const fetchUserAndLikeStatus = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUser(user);
+      
+      if (user) {
+        const { data } = await supabase
+          .from('post_likes')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('post_id', post.id)
+          .maybeSingle();
+        
+        setIsLiked(!!data);
+      }
+    } catch (error) {
+      console.error('Error fetching like status:', error);
+    }
+  };
+
   const timeAgo = (date) => {
     const seconds = Math.floor((new Date() - new Date(date)) / 1000);
     
@@ -67,16 +90,53 @@ function PostCard({ post, onUpdate }) {
     e.preventDefault();
     e.stopPropagation();
     
+    if (!currentUser) {
+      alert('Please log in to like posts');
+      return;
+    }
+    
     try {
-      const { error } = await supabase
-        .from('posts')
-        .update({ upvotes: post.upvotes + 1 })
-        .eq('id', post.id);
-
-      if (error) throw error;
+      if (isLiked) {
+        // Unlike: remove the like
+        const { error: deleteError } = await supabase
+          .from('post_likes')
+          .delete()
+          .eq('user_id', currentUser.id)
+          .eq('post_id', post.id);
+        
+        if (deleteError) throw deleteError;
+        
+        // Decrement upvotes
+        const { error: updateError } = await supabase
+          .from('posts')
+          .update({ upvotes: post.upvotes - 1 })
+          .eq('id', post.id);
+        
+        if (updateError) throw updateError;
+        
+        setIsLiked(false);
+      } else {
+        // Like: add the like
+        const { error: insertError } = await supabase
+          .from('post_likes')
+          .insert({ user_id: currentUser.id, post_id: post.id });
+        
+        if (insertError) throw insertError;
+        
+        // Increment upvotes
+        const { error: updateError } = await supabase
+          .from('posts')
+          .update({ upvotes: post.upvotes + 1 })
+          .eq('id', post.id);
+        
+        if (updateError) throw updateError;
+        
+        setIsLiked(true);
+      }
+      
       onUpdate();
     } catch (error) {
-      console.error('Error upvoting:', error);
+      console.error('Error toggling upvote:', error);
     }
   };
 
@@ -108,7 +168,6 @@ function PostCard({ post, onUpdate }) {
 
       <h2 className="post-title">{post.title}</h2>
 
-
       <div className="post-footer">
         {/* Comment Count */}
         <span className="comment-count">
@@ -117,9 +176,9 @@ function PostCard({ post, onUpdate }) {
         
         <button 
           onClick={handleUpvote}
-          className="upvote-button"
+          className={`upvote-button ${isLiked ? 'liked' : ''}`}
         >
-          👍 {post.upvotes}
+          {isLiked ? '❤️' : '❤️'} {post.upvotes}
         </button>
       </div>
 
@@ -236,6 +295,11 @@ function PostCard({ post, onUpdate }) {
           font-weight: 600;
           cursor: pointer;
           transition: all 0.3s ease;
+        }
+
+        .upvote-button.liked {
+          background-color: black; /* or any color you prefer */
+          color: white;
         }
 
         .upvote-button:hover {

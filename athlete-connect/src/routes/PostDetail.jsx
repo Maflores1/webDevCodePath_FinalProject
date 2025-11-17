@@ -11,6 +11,7 @@ function PostDetail() {
   const { user, profile } = useAuth();
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isLiked, setIsLiked] = useState(false);
 
   // Check if current user is the post author OR founder
   const isAuthor = user && post && post.user_id === user.id;
@@ -21,6 +22,27 @@ function PostDetail() {
   useEffect(() => {
     loadPost();
   }, [id]);
+
+  useEffect(() => {
+    const checkLikeStatus = async () => {
+      if (user && post) {
+        try {
+          const { data } = await supabase
+            .from('post_likes')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('post_id', post.id)
+            .maybeSingle();
+          
+          setIsLiked(!!data);
+        } catch (error) {
+          console.error('Error checking like status:', error);
+        }
+      }
+    };
+    
+    checkLikeStatus();
+  }, [user, post]);
 
   const loadPost = async () => {
     try {
@@ -49,15 +71,48 @@ function PostDetail() {
     }
 
     try {
-      const { error } = await supabase
-        .from('posts')
-        .update({ upvotes: post.upvotes + 1 })
-        .eq('id', post.id);
-
-      if (error) throw error;
-      setPost(prev => ({ ...prev, upvotes: prev.upvotes + 1 }));
+      if (isLiked) {
+        // Unlike: remove the like
+        const { error: deleteError } = await supabase
+          .from('post_likes')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('post_id', post.id);
+        
+        if (deleteError) throw deleteError;
+        
+        // Decrement upvotes
+        const { error: updateError } = await supabase
+          .from('posts')
+          .update({ upvotes: post.upvotes - 1 })
+          .eq('id', post.id);
+        
+        if (updateError) throw updateError;
+        
+        setPost(prev => ({ ...prev, upvotes: prev.upvotes - 1 }));
+        setIsLiked(false);
+      } else {
+        // Like: add the like
+        const { error: insertError } = await supabase
+          .from('post_likes')
+          .insert({ user_id: user.id, post_id: post.id });
+        
+        if (insertError) throw insertError;
+        
+        // Increment upvotes
+        const { error: updateError } = await supabase
+          .from('posts')
+          .update({ upvotes: post.upvotes + 1 })
+          .eq('id', post.id);
+        
+        if (updateError) throw updateError;
+        
+        setPost(prev => ({ ...prev, upvotes: prev.upvotes + 1 }));
+        setIsLiked(true);
+      }
     } catch (error) {
-      console.error('Error upvoting:', error);
+      console.error('Error toggling upvote:', error);
+      showToast('Error updating upvote. Please try again.', 'error');
     }
   };
 
@@ -186,8 +241,11 @@ function PostDetail() {
 
         {/* Post Actions */}
         <div className="post-actions">
-          <button onClick={handleUpvote} className="upvote-button-large">
-            👍 Upvote ({post.upvotes})
+          <button 
+            onClick={handleUpvote} 
+            className={`upvote-button-large ${isLiked ? 'liked' : ''}`}
+          >
+            {isLiked ? '❤️' : '❤️'} {isLiked ? 'Liked' : 'Like'} ({post.upvotes})
           </button>
 
           {canEditDelete && (
@@ -210,7 +268,7 @@ function PostDetail() {
         </div>
 
         {/* Comments Section - Pass user prop */}
-        <CommentSection postId={post.id} user={user} />
+        <CommentSection postId={post.id} user={user} profile={profile} />
       </div>
 
       <style>{`
@@ -236,6 +294,11 @@ function PostDetail() {
 
         .btn-pin:hover {
           background: rgba(255, 107, 107, 0.2);
+        }
+
+        .upvote-button-large {
+          background-color: black;
+          color: white;
         }
       `}</style>
     </div>

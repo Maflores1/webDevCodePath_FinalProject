@@ -53,7 +53,13 @@ function EditProfile() {
     setLoading(true);
 
     try {
-      await updateProfile(formData);
+      // Convert empty strings to null for integer fields
+      const dataToUpdate = {
+        ...formData,
+        graduation_year: formData.graduation_year || null
+      };
+      
+      await updateProfile(dataToUpdate);
       showToast('Profile Updated successfully!', 'success');
       navigate(`/profile/${user.id}`);
     } catch (error) {

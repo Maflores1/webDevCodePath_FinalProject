@@ -1,8 +1,3 @@
-// ==========================================
-// FILE: src/contexts/AuthContext.jsx (COMPLETE FIXED VERSION)
-// Replace your entire AuthContext.jsx with this
-// ==========================================
-
 import { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
 
