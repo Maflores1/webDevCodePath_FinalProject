@@ -89,7 +89,7 @@ function EditProfile() {
     };
 
   const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 10 }, (_, i) => currentYear + i);
+  const years = Array.from({ length: 2030 - 2020 + 1 }, (_, i) => 2020 + i);
 
   const SPORTS = [
     'Tennis', 'Soccer', 'Basketball', 'Volleyball', 'Swimming',
