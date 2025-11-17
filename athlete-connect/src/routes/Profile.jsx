@@ -142,7 +142,7 @@ function Profile() {
 
       setIsFollowing(true);
       setFollowersCount(prev => prev + 1);
-      showToast('✅ Successfully followed!', 'success');
+      showToast('Successfully followed!', 'success');
     } catch (error) {
       console.error('Error following:', error);
       showToast('Error following user', 'error');
