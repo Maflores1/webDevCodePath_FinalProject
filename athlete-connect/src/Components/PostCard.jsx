@@ -81,9 +81,9 @@ function PostCard({ post, onUpdate }) {
     if (interval > 1) return Math.floor(interval) + " hours ago";
     
     interval = seconds / 60;
-    if (interval > 1) return Math.floor(interval) + " minutes ago";
+    if (interval > 1) return Math.floor(interval) + " mins ago";
     
-    return Math.floor(seconds) + " seconds ago";
+    return Math.floor(seconds) + " secs ago";
   };
 
   const handleUpvote = async (e) => {
