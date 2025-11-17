@@ -117,7 +117,7 @@ function CreatePost() {
   return (
     <div className="create-post-page">
       <div className="create-container">
-        <h1>Share Your Experience 📝</h1>
+        <h1>Share Your Experience</h1>
         <p className="create-subtitle">
           Your story could help another athlete feel less alone. Share your experiences, 
           ask questions, or offer advice to the community.
@@ -257,6 +257,10 @@ function CreatePost() {
           background: rgba(218, 165, 32, 0.2);
           transform: scale(1.02);
         }
+
+        h1 {
+        line-height: 1.1;
+      }
       `}</style>
     </div>
   );
