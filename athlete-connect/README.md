@@ -71,7 +71,7 @@ The following **additional** features are implemented:
 
 Here's a walkthrough of implemented features:
 
-![Video Walkthrough](./src/assets/finalproject.gif)
+![Video Walkthrough](./src/assets/finalprojectupdated.gif)
 
 GIF created with ...
 
