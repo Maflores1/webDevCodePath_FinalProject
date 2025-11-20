@@ -20,6 +20,9 @@ function Profile() {
   const [showFollowersModal, setShowFollowersModal] = useState(false);
   const [modalType, setModalType] = useState('followers');
 
+  const [savedPosts, setSavedPosts] = useState([]);
+  const [activeTab, setActiveTab] = useState('posts'); // 'posts' or 'saved'
+
   const isOwnProfile = user?.id === id;
 
   useEffect(() => {
@@ -170,11 +173,35 @@ function Profile() {
     }
   };
 
+  const loadSavedPosts = async () => {
+    if (!isOwnProfile) return; // Only show saved posts on own profile
+    
+    try {
+      const { data, error } = await supabase
+        .from('saved_posts')
+        .select(`
+          created_at,
+          posts (*)
+        `)
+        .eq('user_id', id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      
+      // Extract the posts from the join
+      const posts = data.map(item => item.posts);
+      setSavedPosts(posts || []);
+    } catch (error) {
+      console.error('Error loading saved posts:', error);
+    }
+  };
+
   // NOW useEffect (after all functions are defined)
   useEffect(() => {
     loadProfile();
     loadUserPosts();
     loadFollowStats();
+    loadSavedPosts(); // ADD THIS
     if (user && !isOwnProfile) {
       checkIfFollowing();
     }
@@ -340,31 +367,77 @@ function Profile() {
         )}
       </div>
 
-      {/* User's Posts */}
+      {/* User's Posts Section with Tabs */}
       <div className="profile-posts">
-        <h2>
-          {isOwnProfile ? 'Your Posts 📝' : `Posts by ${profile.full_name.split(' ')[0]} 📝`}
-        </h2>
-        
-        {posts.length > 0 ? (
-          <div className="posts-container">
-            {posts.map(post => (
-              <PostCard key={post.id} post={post} onUpdate={loadUserPosts} />
-            ))}
+        {isOwnProfile && (
+          <div className="profile-tabs">
+            <button 
+              className={`tab-button ${activeTab === 'posts' ? 'active' : ''}`}
+              onClick={() => setActiveTab('posts')}
+            >
+              📝 My Posts ({posts.length})
+            </button>
+            <button 
+              className={`tab-button ${activeTab === 'saved' ? 'active' : ''}`}
+              onClick={() => setActiveTab('saved')}
+            >
+              🔖 Saved Posts ({savedPosts.length})
+            </button>
           </div>
-        ) : (
-          <div className="no-posts">
-            <p>
-              {isOwnProfile 
-                ? "You haven't posted yet. Share your first story! 🚀" 
-                : "No posts yet"}
-            </p>
-            {isOwnProfile && (
-              <Link to="/create" className="btn-primary" style={{ marginTop: '20px', display: 'inline-block' }}>
-                📝 Create Your First Post
-              </Link>
+        )}
+
+        {!isOwnProfile && (
+          <h2>Posts by {profile.full_name.split(' ')[0]} 📝</h2>
+        )}
+
+        {/* Posts Tab */}
+        {activeTab === 'posts' && (
+          <>
+            {posts.length > 0 ? (
+              <div className="posts-container">
+                {posts.map(post => (
+                  <PostCard key={post.id} post={post} onUpdate={loadUserPosts} />
+                ))}
+              </div>
+            ) : (
+              <div className="no-posts">
+                <p>
+                  {isOwnProfile 
+                    ? "You haven't posted yet. Share your first story! 🚀" 
+                    : "No posts yet"}
+                </p>
+                {isOwnProfile && (
+                  <Link to="/create" className="btn-primary" style={{ marginTop: '20px', display: 'inline-block' }}>
+                    📝 Create Your First Post
+                  </Link>
+                )}
+              </div>
             )}
-          </div>
+          </>
+        )}
+
+        {/* Saved Posts Tab */}
+        {activeTab === 'saved' && isOwnProfile && (
+          <>
+            {savedPosts.length > 0 ? (
+              <div className="posts-container">
+                {savedPosts.map(post => (
+                  <PostCard 
+                    key={post.id} 
+                    post={post} 
+                    onUpdate={() => {
+                      loadSavedPosts();
+                      loadUserPosts();
+                    }} 
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="no-posts">
+                <p>No saved posts yet. Save posts to view them here! 🔖</p>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -511,7 +584,6 @@ function Profile() {
           margin-bottom: 25px;
           font-size: 1.8em;
           padding-bottom: 15px;
-          border-bottom: 2px solid var(--border-gold);
         }
 
         .clickable-stat {

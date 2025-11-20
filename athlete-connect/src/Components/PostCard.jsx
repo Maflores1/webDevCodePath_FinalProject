@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
+import { showToast } from './Toast';
 
 function PostCard({ post, onUpdate }) {
   const [authorProfile, setAuthorProfile] = useState(null);
   const [commentCount, setCommentCount] = useState(0);
   const [isLiked, setIsLiked] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
 
   useEffect(() => {
@@ -51,14 +53,25 @@ function PostCard({ post, onUpdate }) {
       setCurrentUser(user);
       
       if (user) {
-        const { data } = await supabase
+        // Check if liked
+        const { data: likeData } = await supabase
           .from('post_likes')
           .select('id')
           .eq('user_id', user.id)
           .eq('post_id', post.id)
           .maybeSingle();
         
-        setIsLiked(!!data);
+        setIsLiked(!!likeData);
+
+        // Check if saved
+        const { data: savedData } = await supabase
+          .from('saved_posts')
+          .select('id')
+          .eq('user_id', user.id)
+          .eq('post_id', post.id)
+          .maybeSingle();
+        
+        setIsSaved(!!savedData);
       }
     } catch (error) {
       console.error('Error fetching like status:', error);
@@ -91,13 +104,12 @@ function PostCard({ post, onUpdate }) {
     e.stopPropagation();
     
     if (!currentUser) {
-      alert('Please log in to like posts');
+      showToast('Please log in to like posts', 'error');
       return;
     }
     
     try {
       if (isLiked) {
-        // Unlike: remove the like
         const { error: deleteError } = await supabase
           .from('post_likes')
           .delete()
@@ -106,7 +118,6 @@ function PostCard({ post, onUpdate }) {
         
         if (deleteError) throw deleteError;
         
-        // Decrement upvotes
         const { error: updateError } = await supabase
           .from('posts')
           .update({ upvotes: post.upvotes - 1 })
@@ -116,14 +127,12 @@ function PostCard({ post, onUpdate }) {
         
         setIsLiked(false);
       } else {
-        // Like: add the like
         const { error: insertError } = await supabase
           .from('post_likes')
           .insert({ user_id: currentUser.id, post_id: post.id });
         
         if (insertError) throw insertError;
         
-        // Increment upvotes
         const { error: updateError } = await supabase
           .from('posts')
           .update({ upvotes: post.upvotes + 1 })
@@ -137,6 +146,45 @@ function PostCard({ post, onUpdate }) {
       onUpdate();
     } catch (error) {
       console.error('Error toggling upvote:', error);
+    }
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!currentUser) {
+      showToast('Please log in to save posts', 'error');
+      return;
+    }
+    
+    try {
+      if (isSaved) {
+        // Unsave
+        const { error } = await supabase
+          .from('saved_posts')
+          .delete()
+          .eq('user_id', currentUser.id)
+          .eq('post_id', post.id);
+        
+        if (error) throw error;
+        
+        setIsSaved(false);
+        showToast('Post removed from saved', 'success');
+      } else {
+        // Save
+        const { error } = await supabase
+          .from('saved_posts')
+          .insert({ user_id: currentUser.id, post_id: post.id });
+        
+        if (error) throw error;
+        
+        setIsSaved(true);
+        showToast('Post saved! 📌', 'success');
+      }
+    } catch (error) {
+      console.error('Error toggling save:', error);
+      showToast('Error saving post', 'error');
     }
   };
 
@@ -190,6 +238,14 @@ function PostCard({ post, onUpdate }) {
           className="author-avatar"
         />
         <span className="author-name">by {post.author_name}</span>
+
+        <button 
+      onClick={handleSave}
+      className={`save-button ${isSaved ? 'saved' : ''}`}
+      title={isSaved ? 'Remove from saved' : 'Save post'}
+    >
+      {isSaved ? '🔖' : '🔖'}
+    </button>
       </div>
 
       <style>{`
@@ -298,13 +354,33 @@ function PostCard({ post, onUpdate }) {
         }
 
         .upvote-button.liked {
-          background-color: black; /* or any color you prefer */
+          background-color: black;
           color: white;
         }
 
         .upvote-button:hover {
           background: rgba(218, 165, 32, 0.2);
           transform: scale(1.05);
+        }
+
+        .save-button {
+          background: transparent;
+          border: none;
+          font-size: 1.3rem;
+          cursor: pointer;
+          padding: 5px 10px;
+          transition: all 0.2s;
+          opacity: 0.5;
+        }
+
+        .save-button:hover {
+          opacity: 1;
+          transform: scale(1.15);
+        }
+
+        .save-button.saved {
+          opacity: 1;
+          background-color: black;
         }
       `}</style>
     </Link>

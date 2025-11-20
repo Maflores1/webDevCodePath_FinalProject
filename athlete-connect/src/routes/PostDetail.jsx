@@ -12,6 +12,7 @@ function PostDetail() {
   const [post, setPost] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isLiked, setIsLiked] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
 
   // Check if current user is the post author OR founder
   const isAuthor = user && post && post.user_id === user.id;
@@ -24,24 +25,35 @@ function PostDetail() {
   }, [id]);
 
   useEffect(() => {
-    const checkLikeStatus = async () => {
+    const checkLikeAndSaveStatus = async () => {
       if (user && post) {
         try {
-          const { data } = await supabase
+          // Check like status
+          const { data: likeData } = await supabase
             .from('post_likes')
             .select('id')
             .eq('user_id', user.id)
             .eq('post_id', post.id)
             .maybeSingle();
           
-          setIsLiked(!!data);
+          setIsLiked(!!likeData);
+
+          // Check saved status
+          const { data: savedData } = await supabase
+            .from('saved_posts')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('post_id', post.id)
+            .maybeSingle();
+          
+          setIsSaved(!!savedData);
         } catch (error) {
-          console.error('Error checking like status:', error);
+          console.error('Error checking status:', error);
         }
       }
     };
     
-    checkLikeStatus();
+    checkLikeAndSaveStatus();
   }, [user, post]);
 
   const loadPost = async () => {
@@ -164,6 +176,43 @@ function PostDetail() {
       showToast('Error pinning post', 'error');
     }
   };
+
+  const handleSave = async () => {
+  if (!user) {
+    showToast('Please log in to save posts! 🔒', 'error');
+    navigate('/login');
+    return;
+  }
+
+  try {
+    if (isSaved) {
+      // Unsave
+      const { error } = await supabase
+        .from('saved_posts')
+        .delete()
+        .eq('user_id', user.id)
+        .eq('post_id', post.id);
+      
+      if (error) throw error;
+      
+      setIsSaved(false);
+      showToast('Post removed from saved', 'success');
+    } else {
+      // Save
+      const { error } = await supabase
+        .from('saved_posts')
+        .insert({ user_id: user.id, post_id: post.id });
+      
+      if (error) throw error;
+      
+      setIsSaved(true);
+      showToast('Post saved! 📌', 'success');
+    }
+  } catch (error) {
+    console.error('Error toggling save:', error);
+    showToast('Error saving post', 'error');
+  }
+};
 
   const timeAgo = (date) => {
     const seconds = Math.floor((new Date() - new Date(date)) / 1000);
