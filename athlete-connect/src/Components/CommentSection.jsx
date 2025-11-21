@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { showToast } from './Toast';
+import { notifyNewComment } from '../services/notificationService';
 
 function CommentSection({ postId }) {
   const navigate = useNavigate();
@@ -63,6 +64,24 @@ function CommentSection({ postId }) {
         .select();
 
       if (error) throw error;
+
+      // Get post details for notification
+      const { data: post } = await supabase
+        .from('posts')
+        .select('title, user_id')
+        .eq('id', postId)
+        .single();
+
+      // Create notification for post author
+      if (post && post.user_id !== user.id) {
+        notifyNewComment(
+          post.user_id,
+          profile?.full_name || user.email,
+          post.title,
+          postId,
+          user.id
+        ).catch(err => console.error('Failed to create notification:', err));
+      }
 
       setComments(prev => [...prev, data[0]]);
       setNewComment('');

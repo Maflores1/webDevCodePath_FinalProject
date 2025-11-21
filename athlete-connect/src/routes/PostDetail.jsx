@@ -297,8 +297,16 @@ function PostDetail() {
             {isLiked ? '❤️' : '❤️'} {isLiked ? 'Liked' : 'Like'} ({post.upvotes})
           </button>
 
+          
+
           {canEditDelete && (
             <div className="post-action-buttons">
+              <button 
+                onClick={handleSave} 
+                className={`save-button-large ${isSaved ? 'saved' : ''}`}
+              >
+                {isSaved ? '🔖 Saved' : '🔖 Save'}
+              </button>
               {isFounder && (
                 <button onClick={handlePinPost} className="btn-pin">
                   {post.is_pinned ? '📌 Unpin' : '📌 Pin'}
@@ -348,6 +356,23 @@ function PostDetail() {
         .upvote-button-large {
           background-color: black;
           color: white;
+        }
+
+        .save-button-large {
+          background-color: black;
+          color: white;
+          border: 2px solid var(--primary-gold);
+          padding: 12px 24px;
+          border-radius: 10px;
+          font-weight: 600;
+          font-size: 1.1em;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+
+        .save-button-large:hover {
+          background: rgba(218, 165, 32, 0.3);
+          transform: scale(1.05);
         }
       `}</style>
     </div>

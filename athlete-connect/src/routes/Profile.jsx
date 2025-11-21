@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import PostCard from '../Components/PostCard';
 import FollowersModal from '../Components/FollowersModal';
 import { showToast } from '../Components/Toast';
+import { notifyNewFollower } from '../services/notificationService';
 
 function Profile() {
   const { id } = useParams();
@@ -21,7 +22,8 @@ function Profile() {
   const [modalType, setModalType] = useState('followers');
 
   const [savedPosts, setSavedPosts] = useState([]);
-  const [activeTab, setActiveTab] = useState('posts'); // 'posts' or 'saved'
+  const [savedPostsCount, setSavedPostsCount] = useState(0);
+  const [activeTab, setActiveTab] = useState('posts');
 
   const isOwnProfile = user?.id === id;
 
@@ -143,6 +145,22 @@ function Profile() {
 
       if (error) throw error;
 
+      // Get follower's name for notification
+      const { data: followerProfile } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .single();
+
+      // Create notification
+      if (followerProfile) {
+        await notifyNewFollower(
+          id,
+          followerProfile.full_name,
+          user.id
+        );
+      }
+
       setIsFollowing(true);
       setFollowersCount(prev => prev + 1);
       showToast('Successfully followed!', 'success');
@@ -174,7 +192,7 @@ function Profile() {
   };
 
   const loadSavedPosts = async () => {
-    if (!isOwnProfile) return; // Only show saved posts on own profile
+    if (!isOwnProfile) return;
     
     try {
       const { data, error } = await supabase
@@ -188,9 +206,9 @@ function Profile() {
 
       if (error) throw error;
       
-      // Extract the posts from the join
       const posts = data.map(item => item.posts);
       setSavedPosts(posts || []);
+      setSavedPostsCount(posts.length); // ADD THIS
     } catch (error) {
       console.error('Error loading saved posts:', error);
     }
@@ -381,7 +399,7 @@ function Profile() {
               className={`tab-button ${activeTab === 'saved' ? 'active' : ''}`}
               onClick={() => setActiveTab('saved')}
             >
-              🔖 Saved Posts ({savedPosts.length})
+              🔖 Saved Posts ({savedPostsCount})
             </button>
           </div>
         )}
@@ -425,10 +443,7 @@ function Profile() {
                   <PostCard 
                     key={post.id} 
                     post={post} 
-                    onUpdate={() => {
-                      loadSavedPosts();
-                      loadUserPosts();
-                    }} 
+                    onUpdate={loadSavedPosts} // This will refresh the saved posts and count
                   />
                 ))}
               </div>

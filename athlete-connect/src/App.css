@@ -35,7 +35,7 @@ body {
 /* Navigation */
 .main-nav {
   background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-  padding: 20px 40px;
+  padding: 20px 25px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -84,7 +84,7 @@ body {
 .nav-brand {
   display: flex;
   align-items: center;
-  gap: 15px;              /* logo + text spacing */
+  gap: 10px; 
 }
 
 
@@ -669,7 +669,7 @@ body {
   transition: all 0.3s ease;
 }
 
-.upvote-button-large:hover {
+.upvote-button-large:hover{
   background: rgba(218, 165, 32, 0.3);
   transform: scale(1.05);
 }
@@ -1137,7 +1137,7 @@ video {
     font-size: 2em;
   }
   .posts-container {
-    grid-template-columns: 1fr; /* ✅ single column on mobile */
+    grid-template-columns: 1fr; 
   }
 
 }
@@ -1250,4 +1250,28 @@ video {
 
 .tab-button.active {
     color: white;
+}
+
+.mobile-nav-actions {
+  display: flex;
+  align-items: center;
+
+}
+
+.desktop-notification {
+  display: block;
+}
+
+/* Hide desktop bell on mobile */
+@media (max-width: 768px) {
+  .desktop-notification {
+    display: none;
+  }
+}
+
+/* Show mobile bell only on mobile */
+@media (min-width: 769px) {
+  .mobile-nav-actions .notification-bell-container {
+    display: none;
+  }
 }

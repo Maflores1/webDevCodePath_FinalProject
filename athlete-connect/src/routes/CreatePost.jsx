@@ -4,6 +4,7 @@ import { supabase } from '../supabaseClient'
 import { useAuth } from '../contexts/AuthContext'
 import { uploadMedia } from '../utils/mediaUpload'
 import { showToast } from '../Components/Toast';
+import { notifyFollowersNewPost } from '../services/notificationService';
 
 function CreatePost() {
   const navigate = useNavigate();
@@ -103,6 +104,16 @@ function CreatePost() {
         .select();
 
       if (error) throw error;
+
+      // Notify followers about new post
+      if (data && data[0] && profile) {
+      notifyFollowersNewPost(
+        user.id,
+        profile.full_name,
+        data[0].title,  // Changed from data.title
+        data[0].id      // Changed from data.id
+      ).catch(err => console.error('Failed to notify followers:', err));
+    }
 
       showToast('Post created successfully!', 'success');
       navigate('/');

@@ -2,6 +2,7 @@ import { Outlet, Link, useLocation } from "react-router-dom"
 import { useAuth } from '../contexts/AuthContext'
 import { useState } from "react";
 import { showToast } from '../Components/Toast';
+import NotificationBell from '../Components/NotificationBell';
 
 function Layout() {
   const location = useLocation();
@@ -29,12 +30,15 @@ function Layout() {
           <p className="nav-subtitle">by USA Recruited</p>
         </div>
 
-        <button 
-          className="hamburger" 
-          onClick={() => setMenuOpen(!menuOpen)}
-        >
-          ☰
-        </button>
+         <div className="mobile-nav-actions">
+            {user && <NotificationBell />}
+            <button 
+              className="hamburger" 
+              onClick={() => setMenuOpen(!menuOpen)}
+            >
+              ☰
+            </button>
+          </div>
       </div>
 
       <div className={`nav-links ${menuOpen ? 'open' : ''}`}>
@@ -66,7 +70,7 @@ function Layout() {
               className={location.pathname === '/create' ? 'active' : ''} 
               onClick={() => setMenuOpen(false)}
             >
-              + Create Post
+              + New Post
             </Link>
             {isFounder && (
               <Link 
@@ -84,6 +88,11 @@ function Layout() {
             >
               👤 {profile?.full_name || 'Profile'}
             </Link>
+
+            <div className="desktop-notification">
+              <NotificationBell />
+            </div>
+            
             <button 
               onClick={() => { handleSignOut(); setMenuOpen(false); }} 
               className="nav-link-button"
